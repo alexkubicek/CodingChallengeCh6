@@ -1,80 +1,98 @@
 import math
 
 
-def euclidean_distance(p, q):
-    squared_dist = sum((p[i] - q[i])**2 for i in range(len(p)))
-    return math.sqrt(max(squared_dist, 0))
+def get_distance(one, two):
+    global OGMATRIX
+    distance = 0
+    sub_one = sub_two = 0
+    for point in one:
+        if point == 0:
+            sub_one += 1
+            continue
+        for second_point in two:
+            if second_point == 0:
+                sub_two += 1
+                continue
+            distance += OGMATRIX[point][second_point]
+    distance /= (len(one) - sub_one) * (len(two) - sub_two)
+    return distance
 
 
-def get_data_points(dist_matrix):
-    n = len(dist_matrix)
-    data_points = []
-    for i in range(n):
-        point = [0] * n
-        for j in range(n):
-            point[j] = math.sqrt(dist_matrix[i][i] + dist_matrix[j][j] - 2 * dist_matrix[i][j])
-        data_points.append(point)
-    return data_points
+def join_clusters(two_clusters):
+    global matrix
+    new_cluster = []
+    for c in two_clusters:
+        for cl in c:
+            if cl != 0:
+                new_cluster.append(cl)
+    new_cluster = tuple(new_cluster)
+    del matrix[two_clusters[0]]
+    del matrix[two_clusters[1]]
+    new_distances = {}
+    for key in matrix.keys():
+        new_distances[key] = get_distance(key, new_cluster)
+        matrix[key][new_cluster] = new_distances[key]
+        del matrix[key][two_clusters[0]]
+        del matrix[key][two_clusters[1]]
+    new_distances[new_cluster] = float(0)
+    matrix[new_cluster] = new_distances
+    return new_cluster
 
 
-def hierarchical_clustering(n, dist_matrix):
-    # Get the data points corresponding to the distance matrix
-    data_points = get_data_points(dist_matrix)
+def get_closest(cur_clusters):
+    min_dist = math.inf
+    closest_clusters = ()
+    for cluster in cur_clusters:
+        for second_cluster in cur_clusters:
+            cur_distance = matrix[cluster][second_cluster]
+            if cur_distance == 0:
+                continue
+            if cur_distance < min_dist:
+                min_dist = cur_distance
+                closest_clusters = (cluster, second_cluster)
+    return closest_clusters
 
-    # Initialize clusters as singletons
-    clusters = [[i] for i in range(n)]
 
-    # Loop until there is only one cluster left
+def hierarchical_clustering():
+    global n, matrix
+    clusters = []
+    for my_int in range(n):
+        clusters.append((my_int + 1, 0))
     while len(clusters) > 1:
-        # Calculate the pairwise distances between clusters
-        pairwise_dists = []
-        for i in range(len(clusters)):
-            row = []
-            for j in range(len(clusters)):
-                if i == j:
-                    row.append(float('inf'))
-                else:
-                    dist_sum = 0
-                    for p in clusters[i]:
-                        for q in clusters[j]:
-                            dist = euclidean_distance(data_points[p], data_points[q])
-                            dist_sum += dist
-                    dist = dist_sum / (len(clusters[i]) * len(clusters[j]))
-                    row.append(dist)
-            pairwise_dists.append(row)
-
-        # Find the indices of the clusters with the minimum distance
-        min_dist = float('inf')
-        min_i = 0
-        min_j = 0
-        for i in range(len(clusters)):
-            for j in range(i + 1, len(clusters)):
-                if pairwise_dists[i][j] < min_dist:
-                    min_dist = pairwise_dists[i][j]
-                    min_i = i
-                    min_j = j
-
-        # Merge the clusters with the minimum distance
-        new_cluster = clusters[min_i] + clusters[min_j]
-        clusters.pop(max(min_i, min_j))
-        clusters.pop(min(min_i, min_j))
-        clusters.append(new_cluster)
-
-        # Print the newly created cluster without commas and brackets
-        print(' '.join(str(x+1) for x in new_cluster))
+        closest = get_closest(clusters)
+        for clus in closest:
+            for point in clus:
+                if point != 0:
+                    print(point, end=" ")
+        print()
+        newest = join_clusters(closest)
+        for my_int in range(2):
+            clusters.remove(closest[my_int])
+        clusters.append(newest)
 
 
-# Test the code on the given input file
-FILEPATH = "./HierarchicalClusteringData/input_1.txt"
+FILEPATH = "./HierarchicalClusteringData/dataset_873261_7.txt"
 
 inFile = open(FILEPATH)
 
-line = inFile.readline().strip("\n\t ")
-n = int(line)
-d_m = []
-while line := inFile.readline():
-    d_m.append([])
-    for string in line.split(" "):
-        d_m[-1].append(float(string))
+n = int(inFile.readline().strip("\n\t "))
 
-hierarchical_clustering(n, d_m)
+matrix = {}
+OGMATRIX = {}
+i = 1
+while line := inFile.readline():
+    OGMATRIX[i] = {}
+    matrix[(i, 0)] = {}
+    j = 1
+    line = line.strip("\n\t ").split(" ")
+    for num in line:
+        OGMATRIX[i][j] = float(num)
+        matrix[(i, 0)][(j, 0)] = (float(num))
+        j += 1
+    i += 1
+
+print(matrix.keys())
+print(OGMATRIX.keys())
+inFile.close()
+
+hierarchical_clustering()

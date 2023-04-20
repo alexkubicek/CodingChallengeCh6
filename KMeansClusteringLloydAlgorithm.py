@@ -72,7 +72,7 @@ def lloyd_algorithm(k):
     iteration_count = 0
     while prev_centers != centers:
         if iteration_count > MAX_ITERATION:
-            break;
+            break
         prev_centers = centers
         centers_to_clusters()
         new_centers = []
